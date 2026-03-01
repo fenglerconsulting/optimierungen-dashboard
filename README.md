@@ -1,0 +1,1374 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fengler Consulting – Optimierungen Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <style>
+        :root {
+            --bg-primary: #0a0e17;
+            --bg-secondary: #111827;
+            --bg-card: #1a2236;
+            --bg-card-hover: #1f2a42;
+            --border: #2a3550;
+            --text-primary: #e8ecf4;
+            --text-secondary: #8b97b0;
+            --text-muted: #5c6a82;
+            --accent-blue: #3b82f6;
+            --accent-blue-dim: rgba(59,130,246,0.15);
+            --accent-green: #22c55e;
+            --accent-green-dim: rgba(34,197,94,0.12);
+            --accent-red: #ef4444;
+            --accent-red-dim: rgba(239,68,68,0.12);
+            --accent-amber: #f59e0b;
+            --accent-amber-dim: rgba(245,158,11,0.12);
+            --accent-purple: #a855f7;
+            --accent-purple-dim: rgba(168,85,247,0.12);
+            --accent-cyan: #06b6d4;
+            --accent-cyan-dim: rgba(6,182,212,0.12);
+            --radius: 10px;
+            --radius-sm: 6px;
+            --shadow: 0 4px 24px rgba(0,0,0,0.3);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'DM Sans', -apple-system, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.5;
+        }
+
+        /* ─── Header ─── */
+        .header {
+            background: linear-gradient(135deg, var(--bg-secondary) 0%, #151d30 100%);
+            border-bottom: 1px solid var(--border);
+            padding: 20px 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(12px);
+        }
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .header-logo {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 16px;
+            color: white;
+        }
+        .header h1 {
+            font-size: 18px;
+            font-weight: 600;
+            letter-spacing: -0.02em;
+        }
+        .header h1 span { color: var(--text-muted); font-weight: 400; }
+        .header-meta {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+        .header-meta .status-dot {
+            width: 8px; height: 8px;
+            background: var(--accent-green);
+            border-radius: 50%;
+            animation: pulse 2s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+        .btn-refresh {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            padding: 8px 14px;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-size: 13px;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+        .btn-refresh:hover {
+            background: var(--bg-card-hover);
+            color: var(--text-primary);
+            border-color: var(--accent-blue);
+        }
+
+        /* ─── Tabs ─── */
+        .tab-bar {
+            display: flex;
+            gap: 2px;
+            padding: 12px 32px 0;
+            background: var(--bg-primary);
+            border-bottom: 1px solid var(--border);
+        }
+        .tab {
+            padding: 10px 20px;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-muted);
+            cursor: pointer;
+            border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+            border: 1px solid transparent;
+            border-bottom: none;
+            transition: all 0.2s;
+            position: relative;
+        }
+        .tab:hover { color: var(--text-secondary); background: var(--bg-secondary); }
+        .tab.active {
+            color: var(--accent-blue);
+            background: var(--bg-secondary);
+            border-color: var(--border);
+        }
+        .tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0; right: 0;
+            height: 2px;
+            background: var(--accent-blue);
+        }
+
+        /* ─── Content ─── */
+        .content { padding: 24px 32px 48px; max-width: 1600px; margin: 0 auto; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* ─── Filters ─── */
+        .filter-row {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .filter-label {
+            font-size: 13px;
+            color: var(--text-muted);
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        select, .search-input {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            padding: 8px 14px;
+            border-radius: var(--radius-sm);
+            font-family: inherit;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+            min-width: 160px;
+        }
+        select:focus, .search-input:focus { border-color: var(--accent-blue); }
+        .search-input { min-width: 300px; }
+        .search-input::placeholder { color: var(--text-muted); }
+
+        .pill-group { display: flex; gap: 4px; }
+        .pill {
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            border: 1px solid var(--border);
+            background: var(--bg-card);
+            color: var(--text-secondary);
+            transition: all 0.2s;
+        }
+        .pill:hover { background: var(--bg-card-hover); }
+        .pill.active {
+            background: var(--accent-blue-dim);
+            color: var(--accent-blue);
+            border-color: var(--accent-blue);
+        }
+
+        /* ─── KPI Cards ─── */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .kpi-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px;
+            transition: border-color 0.2s;
+        }
+        .kpi-card:hover { border-color: var(--accent-blue); }
+        .kpi-label {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            margin-bottom: 8px;
+        }
+        .kpi-value {
+            font-size: 28px;
+            font-weight: 700;
+            font-family: 'JetBrains Mono', monospace;
+            letter-spacing: -0.02em;
+        }
+        .kpi-sub {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+        .kpi-pos { color: var(--accent-green); }
+        .kpi-neg { color: var(--accent-red); }
+        .kpi-neutral { color: var(--accent-amber); }
+
+        /* ─── Charts ─── */
+        .chart-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(480px, 1fr));
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+        .chart-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 24px;
+        }
+        .chart-title {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        .chart-subtitle {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 16px;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            height: 320px;
+        }
+
+        /* ─── Table ─── */
+        .table-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+            margin-bottom: 24px;
+        }
+        .table-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .table-header h3 { font-size: 15px; font-weight: 600; }
+        .table-header .badge {
+            background: var(--accent-blue-dim);
+            color: var(--accent-blue);
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th {
+            text-align: left;
+            padding: 12px 16px;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            border-bottom: 1px solid var(--border);
+            cursor: pointer;
+            user-select: none;
+            white-space: nowrap;
+        }
+        th:hover { color: var(--text-secondary); }
+        td {
+            padding: 12px 16px;
+            font-size: 14px;
+            border-bottom: 1px solid rgba(42,53,80,0.4);
+            white-space: nowrap;
+        }
+        tr:hover td { background: rgba(59,130,246,0.03); }
+        .mono {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+        }
+        .tag {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .tag-pa { background: var(--accent-cyan-dim); color: var(--accent-cyan); }
+        .tag-ma { background: var(--accent-purple-dim); color: var(--accent-purple); }
+        .tag-pos { background: var(--accent-green-dim); color: var(--accent-green); }
+        .tag-neg { background: var(--accent-red-dim); color: var(--accent-red); }
+        .tag-neutral { background: var(--accent-amber-dim); color: var(--accent-amber); }
+
+        .asset-tag {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 500;
+            margin: 1px 2px;
+            background: rgba(59,130,246,0.1);
+            color: var(--accent-blue);
+        }
+
+        /* ─── Customer Select ─── */
+        .customer-select-wrapper {
+            position: relative;
+        }
+        .customer-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            width: 400px;
+            max-height: 300px;
+            overflow-y: auto;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            z-index: 50;
+            box-shadow: var(--shadow);
+            display: none;
+        }
+        .customer-dropdown.show { display: block; }
+        .customer-option {
+            padding: 10px 14px;
+            cursor: pointer;
+            font-size: 14px;
+            border-bottom: 1px solid rgba(42,53,80,0.3);
+            transition: background 0.15s;
+        }
+        .customer-option:hover { background: var(--bg-card-hover); }
+        .customer-option .sub { font-size: 12px; color: var(--text-muted); }
+
+        /* ─── Loading ─── */
+        .loading-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(10,14,23,0.85);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 999;
+            backdrop-filter: blur(4px);
+        }
+        .loading-spinner {
+            text-align: center;
+        }
+        .loading-spinner .ring {
+            width: 48px; height: 48px;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent-blue);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 16px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading-spinner p {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        /* ─── Empty State ─── */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-muted);
+        }
+        .empty-state .icon { font-size: 48px; margin-bottom: 16px; }
+        .empty-state p { font-size: 15px; }
+
+        /* ─── Scrollbar ─── */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+        /* ─── Responsive ─── */
+        @media (max-width: 768px) {
+            .header { padding: 16px; }
+            .content { padding: 16px; }
+            .tab-bar { padding: 8px 16px 0; overflow-x: auto; }
+            .chart-grid { grid-template-columns: 1fr; }
+            .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+            .search-input { min-width: 200px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Loading -->
+<div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-spinner">
+        <div class="ring"></div>
+        <p>Daten werden geladen...</p>
+    </div>
+</div>
+
+<!-- Header -->
+<header class="header">
+    <div class="header-left">
+        <div class="header-logo">FC</div>
+        <h1>Optimierungen Dashboard <span>| Fengler Consulting</span></h1>
+    </div>
+    <div class="header-meta">
+        <div class="status-dot"></div>
+        <span id="lastUpdate">Wird geladen...</span>
+        <button class="btn-refresh" onclick="loadData()">↻ Aktualisieren</button>
+    </div>
+</header>
+
+<!-- Tabs -->
+<div class="tab-bar">
+    <div class="tab active" onclick="switchTab('overview')">Überblick & Asset-Performance</div>
+    <div class="tab" onclick="switchTab('customer')">Kunden Deep Dive</div>
+</div>
+
+<!-- Content -->
+<div class="content">
+
+    <!-- ═══════ TAB 1: Overview ═══════ -->
+    <div class="tab-content active" id="tab-overview">
+        <!-- Filters -->
+        <div class="filter-row">
+            <div class="filter-group">
+                <span class="filter-label">Paket</span>
+                <div class="pill-group" id="paketFilter">
+                    <div class="pill active" data-value="all" onclick="setPaketFilter('all', this)">Alle</div>
+                    <div class="pill" data-value="PA" onclick="setPaketFilter('PA', this)">PA</div>
+                    <div class="pill" data-value="MA" onclick="setPaketFilter('MA', this)">MA</div>
+                </div>
+            </div>
+            <div class="filter-group">
+                <span class="filter-label">Zeitraum</span>
+                <select id="timeFilter" onchange="applyFilters()">
+                    <option value="all">Gesamter Zeitraum</option>
+                    <option value="30">Letzte 30 Tage</option>
+                    <option value="90" selected>Letzte 90 Tage</option>
+                    <option value="180">Letzte 180 Tage</option>
+                    <option value="365">Letztes Jahr</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <span class="filter-label">Min. Laufzeit</span>
+                <select id="minDaysFilter" onchange="applyFilters()">
+                    <option value="0">Keine Mindestlaufzeit</option>
+                    <option value="7" selected>≥ 7 Tage</option>
+                    <option value="14">≥ 14 Tage</option>
+                    <option value="30">≥ 30 Tage</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <span class="filter-label">Status</span>
+                <select id="statusFilter" onchange="applyFilters()">
+                    <option value="all">Alle</option>
+                    <option value="Aktiv">Nur Aktive</option>
+                    <option value="Beendet">Nur Beendete</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- KPIs -->
+        <div class="kpi-grid" id="overviewKPIs"></div>
+
+        <!-- Charts -->
+        <div class="chart-grid">
+            <div class="chart-card">
+                <div class="chart-title">Asset-Performance: Ø Steigerung pro Woche</div>
+                <div class="chart-subtitle">Durchschnittliche Veränderung der wöchentlichen Anfragen/Bewerbungen nach Optimierung</div>
+                <div class="chart-container"><canvas id="chartAssetSteigerung"></canvas></div>
+            </div>
+            <div class="chart-card">
+                <div class="chart-title">Asset-Performance: Erfolgsquote</div>
+                <div class="chart-subtitle">Anteil der Optimierungen mit positiver Steigerung je Asset-Typ</div>
+                <div class="chart-container"><canvas id="chartAssetSuccessRate"></canvas></div>
+            </div>
+        </div>
+        <div class="chart-grid">
+            <div class="chart-card">
+                <div class="chart-title">Optimierungen im Zeitverlauf</div>
+                <div class="chart-subtitle">Anzahl gestarteter Optimierungen pro Monat</div>
+                <div class="chart-container"><canvas id="chartTimeline"></canvas></div>
+            </div>
+            <div class="chart-card">
+                <div class="chart-title">Vorher vs. Nachher: Wöchentliche Eingänge</div>
+                <div class="chart-subtitle">Verteilung der Vorher- und Nachher-Werte aller Optimierungen</div>
+                <div class="chart-container"><canvas id="chartVorNach"></canvas></div>
+            </div>
+        </div>
+
+        <!-- Asset Detail Table -->
+        <div class="table-card">
+            <div class="table-header">
+                <h3>Detailansicht: Alle Asset-Typen</h3>
+                <span class="badge" id="assetTableCount">0</span>
+            </div>
+            <div style="overflow-x: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th onclick="sortAssetTable('name')">Asset ↕</th>
+                            <th onclick="sortAssetTable('count')">Anzahl ↕</th>
+                            <th onclick="sortAssetTable('avgSteigerung')">Ø Steigerung/Woche ↕</th>
+                            <th onclick="sortAssetTable('successRate')">Erfolgsquote ↕</th>
+                            <th onclick="sortAssetTable('avgVor')">Ø Vorher/Woche ↕</th>
+                            <th onclick="sortAssetTable('avgNach')">Ø Nachher/Woche ↕</th>
+                            <th onclick="sortAssetTable('avgDays')">Ø Laufzeit (Tage) ↕</th>
+                            <th onclick="sortAssetTable('totalEingaenge')">Σ Eingänge ↕</th>
+                        </tr>
+                    </thead>
+                    <tbody id="assetTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Full Record Table -->
+        <div class="table-card">
+            <div class="table-header">
+                <h3>Alle Optimierungen (gefiltert)</h3>
+                <span class="badge" id="recordTableCount">0</span>
+            </div>
+            <div style="overflow-x: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Kunde</th>
+                            <th>Paket</th>
+                            <th>Asset(s)</th>
+                            <th>Startdatum</th>
+                            <th>Tage</th>
+                            <th>Vorher/W</th>
+                            <th>Nachher/W</th>
+                            <th>Steigerung</th>
+                            <th>Eingänge</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="recordTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════ TAB 2: Customer Deep Dive ═══════ -->
+    <div class="tab-content" id="tab-customer">
+        <div class="filter-row">
+            <div class="filter-group customer-select-wrapper">
+                <span class="filter-label">Kunde</span>
+                <input type="text" class="search-input" id="customerSearch" placeholder="Kundennamen eingeben..." autocomplete="off"
+                    oninput="filterCustomerDropdown()" onfocus="showCustomerDropdown()">
+                <div class="customer-dropdown" id="customerDropdown"></div>
+            </div>
+            <div class="filter-group">
+                <span class="filter-label">Min. Laufzeit</span>
+                <select id="custMinDaysFilter" onchange="renderCustomerView()">
+                    <option value="0">Keine Mindestlaufzeit</option>
+                    <option value="7" selected>≥ 7 Tage</option>
+                    <option value="14">≥ 14 Tage</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="customerContent">
+            <div class="empty-state">
+                <div class="icon">🔍</div>
+                <p>Wählen Sie einen Kunden aus der Suchleiste, um die Optimierungs-Details zu sehen.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════
+//  CONFIGURATION
+// ═══════════════════════════════════════════════════
+// ⚠️ HIER DEINEN AIRTABLE PERSONAL ACCESS TOKEN EINFÜGEN
+// Erstellen unter: https://airtable.com/create/tokens
+// Benötigte Scopes: data.records:read
+// Zugriff auf Base: Fengler Kunden Datenbank
+const AIRTABLE_PAT = 'DEIN_AIRTABLE_PAT_HIER_EINFUEGEN';
+const BASE_ID = 'appaHrlv4WmEIDOv1';
+const TABLE_ID = 'tblbVVcKVJqINhiyA';
+
+// Field IDs for the API
+const FIELDS = [
+    'fldWhFs7BGiBMIPPH',  // Startdatum
+    'fldUglC3dEfRPkJ8Z',  // Enddatum
+    'fld1kxU0ptVElC6qn',  // Paket (from Stellen)
+    'fldWjl5iDQpWMkMMI',  // Projekt (from Stellen) für Interface
+    'fldhBQjovDkdYf5d6',  // Status (from Stellen)
+    'fldnPGeS6PgBfPP2A',  // Anzahl Tage
+    'fldkpiQ3bwdmyhHiu',  // vor Optimierung (pro Woche)
+    'fldCZiNdXbBPWTFkj',  // Asset
+    'fld89d2ccx4noMIlu',  // nach Optimierung (pro Woche)
+    'fldnyF2I4pzvsH9gf',  // nach Optimierung (total)
+    'fldbHgCgRzYafmfXt',  // Steigerung
+    'fldFtcFRsfdwKi5UR',  // Eingänge (link, for count)
+];
+
+// ═══════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════
+let allRecords = [];
+let filteredRecords = [];
+let currentPaketFilter = 'all';
+let selectedCustomer = null;
+let assetTableSortCol = 'avgSteigerung';
+let assetTableSortDir = 'desc';
+
+// Chart instances
+let chartAssetSteigerung = null;
+let chartAssetSuccessRate = null;
+let chartTimeline = null;
+let chartVorNach = null;
+let chartCustAsset = null;
+let chartCustTimeline = null;
+
+// ═══════════════════════════════════════════════════
+//  DATA LOADING
+// ═══════════════════════════════════════════════════
+async function loadData() {
+    document.getElementById('loadingOverlay').style.display = 'flex';
+    try {
+        allRecords = await fetchAllRecords();
+        document.getElementById('lastUpdate').textContent = 
+            `${allRecords.length} Datensätze · Aktualisiert: ${new Date().toLocaleString('de-DE')}`;
+        applyFilters();
+        populateCustomerDropdown();
+    } catch (err) {
+        console.error('Error loading data:', err);
+        document.getElementById('lastUpdate').textContent = 'Fehler beim Laden!';
+    }
+    document.getElementById('loadingOverlay').style.display = 'none';
+}
+
+async function fetchAllRecords() {
+    let records = [];
+    let offset = null;
+    const fieldParams = FIELDS.map(f => `fields%5B%5D=${f}`).join('&');
+    
+    do {
+        let url = `https://api.airtable.com/v0/${BASE_ID}/${TABLE_ID}?${fieldParams}&pageSize=100`;
+        if (offset) url += `&offset=${offset}`;
+        
+        const res = await fetch(url, {
+            headers: { 'Authorization': `Bearer ${AIRTABLE_PAT}` }
+        });
+        const data = await res.json();
+        
+        if (data.error) throw new Error(data.error.message);
+        
+        records = records.concat(data.records.map(r => ({
+            id: r.id,
+            startdatum: r.fields['Startdatum'] || null,
+            enddatum: r.fields['Enddatum'] || null,
+            paket: (r.fields['Paket (from Stellen)'] || [])[0] || 'Unbekannt',
+            kunde: (r.fields['Projekt (from Stellen) für Interface'] || []).join(', ') || '(ohne Zuordnung)',
+            status: (r.fields['Status (from Stellen)'] || [])[0] || 'Unbekannt',
+            anzahlTage: r.fields['Anzahl Tage'] || 0,
+            vorWoche: r.fields['vor Optimierung (pro Woche)'] || 0,
+            nachWoche: r.fields['nach Optimierung (pro Woche)'] || 0,
+            nachTotal: r.fields['nach Optimierung (total)'] || 0,
+            steigerung: r.fields['Steigerung'] || 0,
+            assets: r.fields['Asset'] || [],
+            eingaengeCount: (r.fields['Eingänge'] || []).length,
+        })));
+        
+        offset = data.offset;
+    } while (offset);
+    
+    return records;
+}
+
+// ═══════════════════════════════════════════════════
+//  FILTERING
+// ═══════════════════════════════════════════════════
+function setPaketFilter(val, el) {
+    currentPaketFilter = val;
+    document.querySelectorAll('#paketFilter .pill').forEach(p => p.classList.remove('active'));
+    el.classList.add('active');
+    applyFilters();
+}
+
+function applyFilters() {
+    const timeDays = parseInt(document.getElementById('timeFilter').value) || 0;
+    const minDays = parseInt(document.getElementById('minDaysFilter').value) || 0;
+    const statusVal = document.getElementById('statusFilter').value;
+    const now = new Date();
+    
+    filteredRecords = allRecords.filter(r => {
+        // Paket
+        if (currentPaketFilter !== 'all' && r.paket !== currentPaketFilter) return false;
+        // Time
+        if (timeDays > 0 && r.startdatum) {
+            const start = new Date(r.startdatum);
+            const diffDays = (now - start) / (1000*60*60*24);
+            if (diffDays > timeDays) return false;
+        }
+        // Min days
+        if (r.anzahlTage < minDays) return false;
+        // Status
+        if (statusVal !== 'all' && r.status !== statusVal) return false;
+        // Must have customer
+        if (r.kunde === '(ohne Zuordnung)') return false;
+        return true;
+    });
+    
+    renderOverview();
+}
+
+// ═══════════════════════════════════════════════════
+//  OVERVIEW RENDERING
+// ═══════════════════════════════════════════════════
+function renderOverview() {
+    renderKPIs();
+    renderAssetSteigerungChart();
+    renderAssetSuccessRateChart();
+    renderTimelineChart();
+    renderVorNachChart();
+    renderAssetTable();
+    renderRecordTable();
+}
+
+function renderKPIs() {
+    const d = filteredRecords;
+    const total = d.length;
+    const posCount = d.filter(r => r.steigerung > 0).length;
+    const negCount = d.filter(r => r.steigerung < 0).length;
+    const neutralCount = d.filter(r => r.steigerung === 0).length;
+    const avgSteigerung = total > 0 ? d.reduce((s,r) => s + r.steigerung, 0) / total : 0;
+    const avgVor = total > 0 ? d.reduce((s,r) => s + r.vorWoche, 0) / total : 0;
+    const avgNach = total > 0 ? d.reduce((s,r) => s + r.nachWoche, 0) / total : 0;
+    const totalEingaenge = d.reduce((s,r) => s + r.nachTotal, 0);
+    const successRate = total > 0 ? (posCount / total * 100) : 0;
+    const uniqueCustomers = new Set(d.map(r => r.kunde)).size;
+    
+    document.getElementById('overviewKPIs').innerHTML = `
+        <div class="kpi-card">
+            <div class="kpi-label">Optimierungen gesamt</div>
+            <div class="kpi-value">${total}</div>
+            <div class="kpi-sub">${uniqueCustomers} Kunden</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">Ø Steigerung / Woche</div>
+            <div class="kpi-value ${avgSteigerung > 0 ? 'kpi-pos' : avgSteigerung < 0 ? 'kpi-neg' : ''}">${avgSteigerung >= 0 ? '+' : ''}${avgSteigerung.toFixed(2)}</div>
+            <div class="kpi-sub">Ø Vorher: ${avgVor.toFixed(2)} → Nachher: ${avgNach.toFixed(2)}</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">Erfolgsquote</div>
+            <div class="kpi-value ${successRate > 50 ? 'kpi-pos' : successRate > 30 ? 'kpi-neutral' : 'kpi-neg'}">${successRate.toFixed(1)}%</div>
+            <div class="kpi-sub">${posCount} positiv · ${negCount} negativ · ${neutralCount} neutral</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">Σ Eingänge nach Opt.</div>
+            <div class="kpi-value">${totalEingaenge}</div>
+            <div class="kpi-sub">${currentPaketFilter === 'PA' ? 'Anfragen' : currentPaketFilter === 'MA' ? 'Bewerbungen' : 'Anfragen + Bewerbungen'}</div>
+        </div>
+    `;
+}
+
+// ═══════════════════════════════════════════════════
+//  ASSET ANALYTICS
+// ═══════════════════════════════════════════════════
+function getAssetStats(records) {
+    const assetMap = {};
+    records.forEach(r => {
+        r.assets.forEach(a => {
+            if (!assetMap[a]) assetMap[a] = { name: a, records: [] };
+            assetMap[a].records.push(r);
+        });
+    });
+    
+    return Object.values(assetMap).map(a => {
+        const recs = a.records;
+        const n = recs.length;
+        const posCount = recs.filter(r => r.steigerung > 0).length;
+        return {
+            name: a.name,
+            count: n,
+            avgSteigerung: n > 0 ? recs.reduce((s,r) => s + r.steigerung, 0) / n : 0,
+            successRate: n > 0 ? (posCount / n * 100) : 0,
+            avgVor: n > 0 ? recs.reduce((s,r) => s + r.vorWoche, 0) / n : 0,
+            avgNach: n > 0 ? recs.reduce((s,r) => s + r.nachWoche, 0) / n : 0,
+            avgDays: n > 0 ? recs.reduce((s,r) => s + r.anzahlTage, 0) / n : 0,
+            totalEingaenge: recs.reduce((s,r) => s + r.nachTotal, 0),
+        };
+    }).sort((a,b) => b.avgSteigerung - a.avgSteigerung);
+}
+
+function renderAssetSteigerungChart() {
+    const stats = getAssetStats(filteredRecords).filter(a => a.count >= 3);
+    if (chartAssetSteigerung) chartAssetSteigerung.destroy();
+    
+    const ctx = document.getElementById('chartAssetSteigerung').getContext('2d');
+    chartAssetSteigerung = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: stats.map(s => s.name),
+            datasets: [{
+                label: 'Ø Steigerung/Woche',
+                data: stats.map(s => s.avgSteigerung),
+                backgroundColor: stats.map(s => s.avgSteigerung > 0 ? 'rgba(34,197,94,0.7)' : 'rgba(239,68,68,0.7)'),
+                borderColor: stats.map(s => s.avgSteigerung > 0 ? '#22c55e' : '#ef4444'),
+                borderWidth: 1,
+                borderRadius: 4,
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => `${ctx.parsed.x >= 0 ? '+' : ''}${ctx.parsed.x.toFixed(2)} / Woche (n=${stats[ctx.dataIndex].count})`
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: { color: 'rgba(42,53,80,0.3)' },
+                    ticks: { color: '#8b97b0', font: { family: 'JetBrains Mono', size: 11 } }
+                },
+                y: {
+                    grid: { display: false },
+                    ticks: { color: '#8b97b0', font: { size: 12 } }
+                }
+            }
+        }
+    });
+}
+
+function renderAssetSuccessRateChart() {
+    const stats = getAssetStats(filteredRecords).filter(a => a.count >= 3).sort((a,b) => b.successRate - a.successRate);
+    if (chartAssetSuccessRate) chartAssetSuccessRate.destroy();
+    
+    const ctx = document.getElementById('chartAssetSuccessRate').getContext('2d');
+    chartAssetSuccessRate = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: stats.map(s => s.name),
+            datasets: [{
+                label: 'Erfolgsquote (%)',
+                data: stats.map(s => s.successRate),
+                backgroundColor: stats.map(s => {
+                    if (s.successRate >= 50) return 'rgba(34,197,94,0.7)';
+                    if (s.successRate >= 30) return 'rgba(245,158,11,0.7)';
+                    return 'rgba(239,68,68,0.7)';
+                }),
+                borderRadius: 4,
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => `${ctx.parsed.x.toFixed(1)}% (${stats[ctx.dataIndex].count} Optimierungen)`
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    max: 100,
+                    grid: { color: 'rgba(42,53,80,0.3)' },
+                    ticks: { color: '#8b97b0', callback: v => v + '%', font: { family: 'JetBrains Mono', size: 11 } }
+                },
+                y: {
+                    grid: { display: false },
+                    ticks: { color: '#8b97b0', font: { size: 12 } }
+                }
+            }
+        }
+    });
+}
+
+function renderTimelineChart() {
+    // Group by month
+    const monthMap = {};
+    filteredRecords.forEach(r => {
+        if (!r.startdatum) return;
+        const key = r.startdatum.substring(0, 7); // YYYY-MM
+        if (!monthMap[key]) monthMap[key] = { total: 0, pos: 0, neg: 0 };
+        monthMap[key].total++;
+        if (r.steigerung > 0) monthMap[key].pos++;
+        if (r.steigerung < 0) monthMap[key].neg++;
+    });
+    
+    const sorted = Object.keys(monthMap).sort();
+    if (chartTimeline) chartTimeline.destroy();
+    
+    const ctx = document.getElementById('chartTimeline').getContext('2d');
+    chartTimeline = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: sorted.map(m => {
+                const [y, mon] = m.split('-');
+                return `${['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'][parseInt(mon)-1]} ${y.slice(2)}`;
+            }),
+            datasets: [
+                {
+                    label: 'Positiv',
+                    data: sorted.map(m => monthMap[m].pos),
+                    backgroundColor: 'rgba(34,197,94,0.7)',
+                    borderRadius: 3,
+                },
+                {
+                    label: 'Negativ/Neutral',
+                    data: sorted.map(m => monthMap[m].total - monthMap[m].pos),
+                    backgroundColor: 'rgba(239,68,68,0.4)',
+                    borderRadius: 3,
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { labels: { color: '#8b97b0', font: { size: 12 } } }
+            },
+            scales: {
+                x: {
+                    stacked: true,
+                    grid: { display: false },
+                    ticks: { color: '#8b97b0', maxRotation: 45, font: { size: 11 } }
+                },
+                y: {
+                    stacked: true,
+                    grid: { color: 'rgba(42,53,80,0.3)' },
+                    ticks: { color: '#8b97b0', font: { family: 'JetBrains Mono', size: 11 } }
+                }
+            }
+        }
+    });
+}
+
+function renderVorNachChart() {
+    // Scatter: vor vs nach
+    const data = filteredRecords.filter(r => r.vorWoche > 0 || r.nachWoche > 0);
+    if (chartVorNach) chartVorNach.destroy();
+    
+    const ctx = document.getElementById('chartVorNach').getContext('2d');
+    chartVorNach = new Chart(ctx, {
+        type: 'scatter',
+        data: {
+            datasets: [{
+                label: 'Optimierungen',
+                data: data.map(r => ({ x: r.vorWoche, y: r.nachWoche, kunde: r.kunde, assets: r.assets.join(', ') })),
+                backgroundColor: data.map(r => r.nachWoche > r.vorWoche ? 'rgba(34,197,94,0.6)' : 'rgba(239,68,68,0.5)'),
+                borderColor: data.map(r => r.nachWoche > r.vorWoche ? '#22c55e' : '#ef4444'),
+                borderWidth: 1,
+                pointRadius: 5,
+                pointHoverRadius: 8,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => {
+                            const p = ctx.raw;
+                            return [`${p.kunde}`, `Vorher: ${p.x.toFixed(2)}/W → Nachher: ${p.y.toFixed(2)}/W`, `Assets: ${p.assets}`];
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    title: { display: true, text: 'Vorher (pro Woche)', color: '#8b97b0' },
+                    grid: { color: 'rgba(42,53,80,0.3)' },
+                    ticks: { color: '#8b97b0', font: { family: 'JetBrains Mono', size: 11 } }
+                },
+                y: {
+                    title: { display: true, text: 'Nachher (pro Woche)', color: '#8b97b0' },
+                    grid: { color: 'rgba(42,53,80,0.3)' },
+                    ticks: { color: '#8b97b0', font: { family: 'JetBrains Mono', size: 11 } }
+                }
+            }
+        }
+    });
+    
+    // Add diagonal reference line as plugin
+    // (points above line = improvement)
+}
+
+// ═══════════════════════════════════════════════════
+//  TABLES
+// ═══════════════════════════════════════════════════
+function renderAssetTable() {
+    const stats = getAssetStats(filteredRecords);
+    
+    // Sort
+    stats.sort((a, b) => {
+        const aVal = a[assetTableSortCol];
+        const bVal = b[assetTableSortCol];
+        if (typeof aVal === 'string') return assetTableSortDir === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+        return assetTableSortDir === 'asc' ? aVal - bVal : bVal - aVal;
+    });
+    
+    document.getElementById('assetTableCount').textContent = stats.length;
+    document.getElementById('assetTableBody').innerHTML = stats.map(s => `
+        <tr>
+            <td><strong>${s.name}</strong></td>
+            <td class="mono">${s.count}</td>
+            <td class="mono"><span class="tag ${s.avgSteigerung > 0 ? 'tag-pos' : s.avgSteigerung < 0 ? 'tag-neg' : 'tag-neutral'}">${s.avgSteigerung >= 0 ? '+' : ''}${s.avgSteigerung.toFixed(2)}</span></td>
+            <td class="mono"><span class="tag ${s.successRate >= 50 ? 'tag-pos' : s.successRate >= 30 ? 'tag-neutral' : 'tag-neg'}">${s.successRate.toFixed(1)}%</span></td>
+            <td class="mono">${s.avgVor.toFixed(2)}</td>
+            <td class="mono">${s.avgNach.toFixed(2)}</td>
+            <td class="mono">${s.avgDays.toFixed(0)}</td>
+            <td class="mono">${s.totalEingaenge}</td>
+        </tr>
+    `).join('');
+}
+
+function sortAssetTable(col) {
+    if (assetTableSortCol === col) {
+        assetTableSortDir = assetTableSortDir === 'asc' ? 'desc' : 'asc';
+    } else {
+        assetTableSortCol = col;
+        assetTableSortDir = 'desc';
+    }
+    renderAssetTable();
+}
+
+function renderRecordTable() {
+    const sorted = [...filteredRecords].sort((a,b) => {
+        if (!a.startdatum) return 1;
+        if (!b.startdatum) return -1;
+        return b.startdatum.localeCompare(a.startdatum);
+    });
+    
+    document.getElementById('recordTableCount').textContent = sorted.length;
+    document.getElementById('recordTableBody').innerHTML = sorted.slice(0, 200).map(r => `
+        <tr>
+            <td style="max-width:250px; white-space:normal; font-size:13px;">${r.kunde}</td>
+            <td><span class="tag ${r.paket === 'PA' ? 'tag-pa' : 'tag-ma'}">${r.paket}</span></td>
+            <td>${r.assets.map(a => `<span class="asset-tag">${a}</span>`).join('')}</td>
+            <td class="mono">${r.startdatum ? formatDate(r.startdatum) : '–'}</td>
+            <td class="mono">${r.anzahlTage}</td>
+            <td class="mono">${r.vorWoche.toFixed(2)}</td>
+            <td class="mono">${r.nachWoche.toFixed(2)}</td>
+            <td class="mono"><span class="tag ${r.steigerung > 0 ? 'tag-pos' : r.steigerung < 0 ? 'tag-neg' : 'tag-neutral'}">${r.steigerung >= 0 ? '+' : ''}${r.steigerung.toFixed(2)}</span></td>
+            <td class="mono">${r.nachTotal}</td>
+            <td><span class="tag" style="background:${r.status === 'Aktiv' ? 'var(--accent-green-dim)' : r.status === 'Beendet' ? 'var(--accent-amber-dim)' : 'var(--accent-blue-dim)'}; color:${r.status === 'Aktiv' ? 'var(--accent-green)' : r.status === 'Beendet' ? 'var(--accent-amber)' : 'var(--accent-blue)'};">${r.status}</span></td>
+        </tr>
+    `).join('');
+}
+
+// ═══════════════════════════════════════════════════
+//  CUSTOMER DEEP DIVE
+// ═══════════════════════════════════════════════════
+function populateCustomerDropdown() {
+    const customers = [...new Set(allRecords.filter(r => r.kunde !== '(ohne Zuordnung)').map(r => r.kunde))].sort();
+    const dd = document.getElementById('customerDropdown');
+    dd.innerHTML = customers.map(c => {
+        const recs = allRecords.filter(r => r.kunde === c);
+        const pakets = [...new Set(recs.map(r => r.paket))].join(', ');
+        return `<div class="customer-option" onclick="selectCustomer('${c.replace(/'/g, "\\'")}')">
+            <div>${c}</div>
+            <div class="sub">${recs.length} Optimierungen · ${pakets}</div>
+        </div>`;
+    }).join('');
+}
+
+function showCustomerDropdown() {
+    document.getElementById('customerDropdown').classList.add('show');
+    filterCustomerDropdown();
+}
+
+function filterCustomerDropdown() {
+    const query = document.getElementById('customerSearch').value.toLowerCase();
+    const opts = document.querySelectorAll('#customerDropdown .customer-option');
+    opts.forEach(opt => {
+        opt.style.display = opt.textContent.toLowerCase().includes(query) ? 'block' : 'none';
+    });
+    document.getElementById('customerDropdown').classList.add('show');
+}
+
+function selectCustomer(name) {
+    selectedCustomer = name;
+    document.getElementById('customerSearch').value = name;
+    document.getElementById('customerDropdown').classList.remove('show');
+    renderCustomerView();
+}
+
+// Close dropdown on outside click
+document.addEventListener('click', e => {
+    if (!e.target.closest('.customer-select-wrapper')) {
+        document.getElementById('customerDropdown').classList.remove('show');
+    }
+});
+
+function renderCustomerView() {
+    if (!selectedCustomer) return;
+    
+    const minDays = parseInt(document.getElementById('custMinDaysFilter').value) || 0;
+    const custRecords = allRecords.filter(r => r.kunde === selectedCustomer && r.anzahlTage >= minDays);
+    
+    if (custRecords.length === 0) {
+        document.getElementById('customerContent').innerHTML = `
+            <div class="empty-state">
+                <div class="icon">📭</div>
+                <p>Keine Optimierungen für diesen Kunden gefunden (mit aktuellen Filtern).</p>
+            </div>`;
+        return;
+    }
+    
+    const total = custRecords.length;
+    const posCount = custRecords.filter(r => r.steigerung > 0).length;
+    const negCount = custRecords.filter(r => r.steigerung < 0).length;
+    const avgSteigerung = total > 0 ? custRecords.reduce((s,r) => s + r.steigerung, 0) / total : 0;
+    const totalEingaenge = custRecords.reduce((s,r) => s + r.nachTotal, 0);
+    const successRate = total > 0 ? (posCount / total * 100) : 0;
+    const paket = custRecords[0].paket;
+    
+    document.getElementById('customerContent').innerHTML = `
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-label">Optimierungen</div>
+                <div class="kpi-value">${total}</div>
+                <div class="kpi-sub"><span class="tag ${paket === 'PA' ? 'tag-pa' : 'tag-ma'}">${paket}</span></div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Ø Steigerung / Woche</div>
+                <div class="kpi-value ${avgSteigerung > 0 ? 'kpi-pos' : avgSteigerung < 0 ? 'kpi-neg' : ''}">${avgSteigerung >= 0 ? '+' : ''}${avgSteigerung.toFixed(2)}</div>
+                <div class="kpi-sub">${posCount} positiv · ${negCount} negativ</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Erfolgsquote</div>
+                <div class="kpi-value ${successRate > 50 ? 'kpi-pos' : 'kpi-neg'}">${successRate.toFixed(1)}%</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Σ Eingänge nach Opt.</div>
+                <div class="kpi-value">${totalEingaenge}</div>
+                <div class="kpi-sub">${paket === 'PA' ? 'Anfragen' : 'Bewerbungen'}</div>
+            </div>
+        </div>
+        
+        <div class="chart-grid">
+            <div class="chart-card">
+                <div class="chart-title">Asset-Performance für ${selectedCustomer.split('|')[0].trim()}</div>
+                <div class="chart-subtitle">Ø Steigerung pro Woche je Asset-Typ</div>
+                <div class="chart-container"><canvas id="chartCustAsset"></canvas></div>
+            </div>
+            <div class="chart-card">
+                <div class="chart-title">Optimierungen im Zeitverlauf</div>
+                <div class="chart-subtitle">Vorher/Nachher pro Optimierung, chronologisch</div>
+                <div class="chart-container"><canvas id="chartCustTimeline"></canvas></div>
+            </div>
+        </div>
+        
+        <div class="table-card">
+            <div class="table-header">
+                <h3>Alle Optimierungen – ${selectedCustomer.split('|')[0].trim()}</h3>
+                <span class="badge">${total}</span>
+            </div>
+            <div style="overflow-x: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Asset(s)</th>
+                            <th>Startdatum</th>
+                            <th>Enddatum</th>
+                            <th>Tage</th>
+                            <th>Vorher/W</th>
+                            <th>Nachher/W</th>
+                            <th>Steigerung</th>
+                            <th>Eingänge</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="custRecordTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    `;
+    
+    // Render customer record table
+    const sorted = [...custRecords].sort((a,b) => (b.startdatum || '').localeCompare(a.startdatum || ''));
+    document.getElementById('custRecordTableBody').innerHTML = sorted.map(r => `
+        <tr>
+            <td>${r.assets.map(a => `<span class="asset-tag">${a}</span>`).join('')}</td>
+            <td class="mono">${r.startdatum ? formatDate(r.startdatum) : '–'}</td>
+            <td class="mono">${r.enddatum ? formatDate(r.enddatum) : '(laufend)'}</td>
+            <td class="mono">${r.anzahlTage}</td>
+            <td class="mono">${r.vorWoche.toFixed(2)}</td>
+            <td class="mono">${r.nachWoche.toFixed(2)}</td>
+            <td class="mono"><span class="tag ${r.steigerung > 0 ? 'tag-pos' : r.steigerung < 0 ? 'tag-neg' : 'tag-neutral'}">${r.steigerung >= 0 ? '+' : ''}${r.steigerung.toFixed(2)}</span></td>
+            <td class="mono">${r.nachTotal}</td>
+            <td><span class="tag" style="background:${r.status === 'Aktiv' ? 'var(--accent-green-dim)' : 'var(--accent-amber-dim)'}; color:${r.status === 'Aktiv' ? 'var(--accent-green)' : 'var(--accent-amber)'};">${r.status}</span></td>
+        </tr>
+    `).join('');
+    
+    // Render customer charts
+    renderCustAssetChart(custRecords);
+    renderCustTimelineChart(custRecords);
+}
+
+function renderCustAssetChart(records) {
+    const stats = getAssetStats(records);
+    if (chartCustAsset) chartCustAsset.destroy();
+    
+    const ctx = document.getElementById('chartCustAsset').getContext('2d');
+    chartCustAsset = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: stats.map(s => s.name),
+            datasets: [
+                {
+                    label: 'Ø Steigerung/W',
+                    data: stats.map(s => s.avgSteigerung),
+                    backgroundColor: stats.map(s => s.avgSteigerung > 0 ? 'rgba(34,197,94,0.7)' : 'rgba(239,68,68,0.7)'),
+                    borderRadius: 4,
+                    yAxisID: 'y',
+                },
+                {
+                    label: 'Anzahl',
+                    data: stats.map(s => s.count),
+                    type: 'line',
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59,130,246,0.1)',
+                    pointBackgroundColor: '#3b82f6',
+                    tension: 0.3,
+                    yAxisID: 'y1',
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { labels: { color: '#8b97b0' } } },
+            scales: {
+                x: { grid: { display: false }, ticks: { color: '#8b97b0', font: { size: 11 }, maxRotation: 45 } },
+                y: { position: 'left', grid: { color: 'rgba(42,53,80,0.3)' }, ticks: { color: '#22c55e', font: { family: 'JetBrains Mono', size: 11 } } },
+                y1: { position: 'right', grid: { display: false }, ticks: { color: '#3b82f6', font: { family: 'JetBrains Mono', size: 11 } } }
+            }
+        }
+    });
+}
+
+function renderCustTimelineChart(records) {
+    const sorted = [...records].filter(r => r.startdatum).sort((a,b) => a.startdatum.localeCompare(b.startdatum));
+    if (chartCustTimeline) chartCustTimeline.destroy();
+    
+    const ctx = document.getElementById('chartCustTimeline').getContext('2d');
+    chartCustTimeline = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: sorted.map((r, i) => formatDate(r.startdatum)),
+            datasets: [
+                {
+                    label: 'Vorher/W',
+                    data: sorted.map(r => r.vorWoche),
+                    backgroundColor: 'rgba(239,68,68,0.4)',
+                    borderRadius: 3,
+                },
+                {
+                    label: 'Nachher/W',
+                    data: sorted.map(r => r.nachWoche),
+                    backgroundColor: 'rgba(34,197,94,0.6)',
+                    borderRadius: 3,
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { labels: { color: '#8b97b0' } },
+                tooltip: {
+                    callbacks: {
+                        title: (items) => {
+                            const idx = items[0].dataIndex;
+                            return `${sorted[idx].assets.join(', ')} (${formatDate(sorted[idx].startdatum)})`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: { grid: { display: false }, ticks: { color: '#8b97b0', maxRotation: 45, font: { size: 10 } } },
+                y: { grid: { color: 'rgba(42,53,80,0.3)' }, ticks: { color: '#8b97b0', font: { family: 'JetBrains Mono', size: 11 } } }
+            }
+        }
+    });
+}
+
+// ═══════════════════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════════════════
+function formatDate(d) {
+    if (!d) return '–';
+    const parts = d.split('-');
+    return `${parts[2]}.${parts[1]}.${parts[0]}`;
+}
+
+function switchTab(tabId) {
+    document.querySelectorAll('.tab').forEach((t, i) => {
+        t.classList.toggle('active', t.textContent.includes(tabId === 'overview' ? 'Überblick' : 'Kunden'));
+    });
+    document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
+    document.getElementById(`tab-${tabId}`).classList.add('active');
+    
+    // Re-render charts on tab switch (fixes canvas sizing)
+    if (tabId === 'overview') {
+        setTimeout(() => renderOverview(), 50);
+    } else if (tabId === 'customer' && selectedCustomer) {
+        setTimeout(() => renderCustomerView(), 50);
+    }
+}
+
+// ═══════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════
+loadData();
+</script>
+</body>
+</html>
