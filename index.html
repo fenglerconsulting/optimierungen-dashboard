@@ -410,6 +410,108 @@
             font-size: 14px;
         }
 
+        /* ─── API Key Modal ─── */
+        .api-modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(10,14,23,0.92);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            backdrop-filter: blur(8px);
+        }
+        .api-modal {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 40px;
+            max-width: 520px;
+            width: 90%;
+            box-shadow: 0 24px 80px rgba(0,0,0,0.5);
+        }
+        .api-modal .modal-logo {
+            width: 48px; height: 48px;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 20px;
+            color: white;
+            margin-bottom: 20px;
+        }
+        .api-modal h2 {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        .api-modal .desc {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 24px;
+            line-height: 1.6;
+        }
+        .api-modal .desc a {
+            color: var(--accent-blue);
+            text-decoration: none;
+        }
+        .api-modal .desc a:hover { text-decoration: underline; }
+        .api-input-group {
+            margin-bottom: 16px;
+        }
+        .api-input-group label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 6px;
+        }
+        .api-input {
+            width: 100%;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            padding: 12px 16px;
+            border-radius: var(--radius-sm);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .api-input:focus { border-color: var(--accent-blue); }
+        .api-input::placeholder { color: var(--text-muted); }
+        .api-btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, var(--accent-blue), #6366f1);
+            color: white;
+            border: none;
+            border-radius: var(--radius-sm);
+            font-family: inherit;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        .api-btn:hover { opacity: 0.9; }
+        .api-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .api-error {
+            color: var(--accent-red);
+            font-size: 13px;
+            margin-top: 8px;
+            display: none;
+        }
+        .api-saved-hint {
+            text-align: center;
+            margin-top: 12px;
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
         /* ─── Empty State ─── */
         .empty-state {
             text-align: center;
@@ -438,8 +540,29 @@
 </head>
 <body>
 
+<!-- API Key Modal -->
+<div class="api-modal-overlay" id="apiModal" style="display:none;">
+    <div class="api-modal">
+        <div class="modal-logo">FC</div>
+        <h2>Airtable API-Schlüssel</h2>
+        <div class="desc">
+            Gib deinen Airtable Personal Access Token ein, um das Dashboard mit Live-Daten zu verbinden.<br>
+            Erstelle einen Token unter <a href="https://airtable.com/create/tokens" target="_blank">airtable.com/create/tokens</a><br>
+            Benötigter Scope: <strong>data.records:read</strong> · Zugriff auf: <strong>Fengler Kunden Datenbank</strong>
+        </div>
+        <div class="api-input-group">
+            <label>Personal Access Token</label>
+            <input type="password" class="api-input" id="apiKeyInput" placeholder="pat..." 
+                onkeydown="if(event.key==='Enter') submitApiKey()">
+        </div>
+        <div class="api-error" id="apiError"></div>
+        <button class="api-btn" id="apiSubmitBtn" onclick="submitApiKey()">Verbinden & Daten laden</button>
+        <div class="api-saved-hint">Der Token wird lokal in deinem Browser gespeichert.</div>
+    </div>
+</div>
+
 <!-- Loading -->
-<div class="loading-overlay" id="loadingOverlay">
+<div class="loading-overlay" id="loadingOverlay" style="display:none;">
     <div class="loading-spinner">
         <div class="ring"></div>
         <p>Daten werden geladen...</p>
@@ -456,6 +579,7 @@
         <div class="status-dot"></div>
         <span id="lastUpdate">Wird geladen...</span>
         <button class="btn-refresh" onclick="loadData()">↻ Aktualisieren</button>
+        <button class="btn-refresh" onclick="showApiModal()" title="API-Schlüssel ändern">🔑</button>
     </div>
 </header>
 
@@ -623,11 +747,8 @@
 // ═══════════════════════════════════════════════════
 //  CONFIGURATION
 // ═══════════════════════════════════════════════════
-// ⚠️ HIER DEINEN AIRTABLE PERSONAL ACCESS TOKEN EINFÜGEN
-// Erstellen unter: https://airtable.com/create/tokens
-// Benötigte Scopes: data.records:read
-// Zugriff auf Base: Fengler Kunden Datenbank
-const AIRTABLE_PAT = 'DEIN_AIRTABLE_PAT_HIER_EINFUEGEN';
+// ⚠️ API-Schlüssel wird über das Modal eingegeben und im Browser gespeichert
+let AIRTABLE_PAT = localStorage.getItem('fengler_airtable_pat') || '';
 const BASE_ID = 'appaHrlv4WmEIDOv1';
 const TABLE_ID = 'tblbVVcKVJqINhiyA';
 
@@ -669,6 +790,10 @@ let chartCustTimeline = null;
 //  DATA LOADING
 // ═══════════════════════════════════════════════════
 async function loadData() {
+    if (!AIRTABLE_PAT) {
+        showApiModal();
+        return;
+    }
     document.getElementById('loadingOverlay').style.display = 'flex';
     try {
         allRecords = await fetchAllRecords();
@@ -679,6 +804,14 @@ async function loadData() {
     } catch (err) {
         console.error('Error loading data:', err);
         document.getElementById('lastUpdate').textContent = 'Fehler beim Laden!';
+        // If auth error, show modal again
+        if (err.message && (err.message.includes('AUTHENTICATION') || err.message.includes('NOT_AUTHORIZED') || err.message.includes('Unauthorized') || err.message.includes('INVALID'))) {
+            localStorage.removeItem('fengler_airtable_pat');
+            AIRTABLE_PAT = '';
+            showApiModal();
+            document.getElementById('apiError').textContent = 'Token ungültig oder abgelaufen. Bitte neu eingeben.';
+            document.getElementById('apiError').style.display = 'block';
+        }
     }
     document.getElementById('loadingOverlay').style.display = 'none';
 }
@@ -1366,9 +1499,66 @@ function switchTab(tabId) {
 }
 
 // ═══════════════════════════════════════════════════
+//  API KEY MODAL
+// ═══════════════════════════════════════════════════
+async function submitApiKey() {
+    const input = document.getElementById('apiKeyInput');
+    const errorEl = document.getElementById('apiError');
+    const btn = document.getElementById('apiSubmitBtn');
+    const token = input.value.trim();
+    
+    if (!token) {
+        errorEl.textContent = 'Bitte einen Token eingeben.';
+        errorEl.style.display = 'block';
+        return;
+    }
+    
+    btn.disabled = true;
+    btn.textContent = 'Prüfe Verbindung...';
+    errorEl.style.display = 'none';
+    
+    // Test the token with a small request
+    try {
+        const testUrl = `https://api.airtable.com/v0/${BASE_ID}/${TABLE_ID}?maxRecords=1`;
+        const res = await fetch(testUrl, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        
+        if (data.error) {
+            throw new Error(data.error.message || 'Ungültiger Token');
+        }
+        
+        // Success — save and load
+        AIRTABLE_PAT = token;
+        localStorage.setItem('fengler_airtable_pat', token);
+        document.getElementById('apiModal').style.display = 'none';
+        loadData();
+        
+    } catch (err) {
+        errorEl.textContent = `Fehler: ${err.message}. Bitte Token prüfen.`;
+        errorEl.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'Verbinden & Daten laden';
+    }
+}
+
+function showApiModal() {
+    document.getElementById('apiModal').style.display = 'flex';
+    document.getElementById('apiKeyInput').value = AIRTABLE_PAT || '';
+    document.getElementById('apiError').style.display = 'none';
+    document.getElementById('apiSubmitBtn').disabled = false;
+    document.getElementById('apiSubmitBtn').textContent = 'Verbinden & Daten laden';
+}
+
+// ═══════════════════════════════════════════════════
 //  INIT
 // ═══════════════════════════════════════════════════
-loadData();
+if (AIRTABLE_PAT) {
+    loadData();
+} else {
+    showApiModal();
+}
 </script>
 </body>
 </html>
